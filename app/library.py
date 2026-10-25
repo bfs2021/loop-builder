@@ -154,9 +154,38 @@ class LibraryError(ValueError):
     """Something about the Loop Builder folder or an event package isn't right."""
 
 
+def windows_documents():
+    """The Documents folder Windows shows in Explorer, or None if Windows can't say. OneDrive's folder backup (on by
+    default on many school PCs) moves it to OneDrive › Documents, so it isn't always <user folder>\\Documents."""
+    if sys.platform != "win32":
+        return None
+    import ctypes  # pylint: disable=import-outside-toplevel  # Windows only
+    from ctypes import wintypes  # pylint: disable=import-outside-toplevel
+
+    class Guid(ctypes.Structure):  # pylint: disable=too-few-public-methods
+        """A Windows GUID, as SHGetKnownFolderPath takes it."""
+
+        _fields_ = [("a", wintypes.DWORD), ("b", wintypes.WORD), ("c", wintypes.WORD), ("d", ctypes.c_ubyte * 8)]
+
+    documents = Guid(0xFDD39AD0, 0x238F, 0x46AF, (ctypes.c_ubyte * 8)(0xAD, 0xB4, 0x6C, 0x85, 0x48, 0x03, 0x69, 0xC7))
+    path = ctypes.c_wchar_p()
+    if ctypes.windll.shell32.SHGetKnownFolderPath(ctypes.byref(documents), 0, None, ctypes.byref(path)) != 0:
+        return None
+    try:
+        return Path(path.value)
+    finally:
+        ctypes.windll.ole32.CoTaskMemFree(path)
+
+
 def documents_root():
-    """Documents › Loop Builder: the Loop Builder folder on Windows, and on a Mac up to 0.1.6."""
-    return Path.home() / "Documents" / "Loop Builder"
+    """Documents › Loop Builder: the Loop Builder folder on Windows, and on a Mac up to 0.1.6. On Windows that's the
+    Documents Explorer shows (OneDrive › Documents when OneDrive backs it up), unless 0.1.7 or earlier already made
+    one in <user folder>\\Documents: that one stays, so no one's events go missing."""
+    in_home = Path.home() / "Documents" / "Loop Builder"
+    if sys.platform != "win32" or in_home.is_dir():
+        return in_home
+    shown = windows_documents()
+    return shown / "Loop Builder" if shown else in_home
 
 
 def default_root():

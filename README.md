@@ -56,8 +56,9 @@ For working on the editor itself, `--browser` opens it in a browser tab instead,
 
 - Build the app: `.venv/bin/pyinstaller packaging/loopbuilder.spec --noconfirm`; installers, signing and CI are
   in [packaging/README.md](packaging/README.md). The version is set in `app/version.py`.
-- Events live in the Loop Builder folder: Documents › Loop Builder on Windows, Library › Application Support ›
-  Loop Builder on a Mac (so macOS doesn't ask to open Documents; 0.1.6 and earlier used Documents there too, and the
+- Events live in the Loop Builder folder: Documents › Loop Builder on Windows (the Documents Explorer shows, which
+  OneDrive's folder backup may have moved; one an earlier version made in the user folder's Documents stays), and
+  Library › Application Support › Loop Builder on a Mac (so macOS doesn't ask to open Documents; 0.1.6 and earlier used Documents there too, and the
   events page offers to bring those over). Exports default to Movies › Loop Builder on a Mac. Set `LOOPBUILDER_HOME`
   to use another folder, as the tests do.
 - Tests: `.venv/bin/python -m pytest`. Lint: `.venv/bin/pylint loopgen app tests packaging/*.py`. Format: `.venv/bin/black loopgen app tests packaging` (120 columns, set in `pyproject.toml`). CI checks both, so keep them clean.

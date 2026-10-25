@@ -1,5 +1,6 @@
 """The Loop Builder folder: starters, duplicates, settings and .loopevent packages."""
 
+import sys
 import zipfile
 from pathlib import Path
 
@@ -160,6 +161,7 @@ def test_the_loop_builder_folder_is_in_application_support_on_a_mac(tmp_path, mo
     assert library.default_root() == tmp_path / "Library" / "Application Support" / "Loop Builder"
     assert library.default_exports(library.default_root()) == tmp_path / "Movies" / "Loop Builder"
     monkeypatch.setattr(library.sys, "platform", "win32")
+    monkeypatch.setattr(library, "windows_documents", lambda: None)  # Windows can't say: the user folder's
     assert library.default_root() == library.documents_root() == tmp_path / "Documents" / "Loop Builder"
     assert library.default_exports(library.default_root()) == tmp_path / "Documents" / "Loop Builder" / "Exports"
     monkeypatch.setenv("LOOPBUILDER_HOME", str(tmp_path / "elsewhere"))
@@ -278,6 +280,7 @@ def test_only_the_macs_own_folder_offers_the_documents_one(tmp_path, monkeypatch
     assert library.old_mac_folder(library.default_root()) is None
     monkeypatch.delenv("LOOPBUILDER_HOME")
     monkeypatch.setattr(library.sys, "platform", "win32")  # Windows keeps Documents: nothing to bring over
+    monkeypatch.setattr(library, "windows_documents", lambda: None)
     assert library.old_mac_folder(library.default_root()) is None
 
 
@@ -314,3 +317,26 @@ def test_move_from_fills_in_settings_this_folder_still_has_at_their_defaults(tmp
     settings = new.settings()
     assert settings["team"] == "Lakeview" and settings["pool_lanes"] == 10 and settings["templates"] == str(tmp_path)
     assert settings["documents_checked"] and not (old.root / "settings.json").exists()
+
+
+def test_windows_uses_the_documents_explorer_shows_unless_one_is_already_in_use(tmp_path, monkeypatch):
+    """OneDrive's folder backup moves Documents to OneDrive › Documents; <user folder>\\Documents isn't where people
+    look then. A Loop Builder folder an earlier version made there stays in use, so no events go missing."""
+    from app import library  # pylint: disable=import-outside-toplevel
+
+    monkeypatch.delenv("LOOPBUILDER_HOME", raising=False)
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setenv("USERPROFILE", str(tmp_path))
+    monkeypatch.setattr(library.sys, "platform", "win32")
+    monkeypatch.setattr(library, "windows_documents", lambda: tmp_path / "OneDrive" / "Documents")
+    assert library.default_root() == tmp_path / "OneDrive" / "Documents" / "Loop Builder"
+    (tmp_path / "Documents" / "Loop Builder").mkdir(parents=True)  # 0.1.7 or earlier already made one here
+    assert library.default_root() == tmp_path / "Documents" / "Loop Builder"
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason="asks Windows itself")
+def test_windows_says_where_documents_is():
+    from app import library  # pylint: disable=import-outside-toplevel
+
+    documents = library.windows_documents()
+    assert documents is not None and documents.is_dir()
