@@ -162,12 +162,15 @@ def unreachable_page(folder, problem):
 
 def main():
     ensure_streams()
-    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap = argparse.ArgumentParser(
+        prog="python -m app", description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
     ap.add_argument("event", nargs="?")
     ap.add_argument("--templates", help="DisplayLink Plus template folder (overrides the setting)")
-    ap.add_argument("--port", type=int, help=argparse.SUPPRESS)
-    ap.add_argument("--browser", action="store_true", help=argparse.SUPPRESS)
-    ap.add_argument("--no-open", action="store_true", help=argparse.SUPPRESS)
+    developer = ap.add_argument_group("developer options")
+    developer.add_argument("--port", type=int, help="port to serve on (default: any free one)")
+    developer.add_argument("--browser", action="store_true", help="open a browser tab instead of the app window")
+    developer.add_argument("--no-open", action="store_true", help="serve only: open no window and no tab")
     args = ap.parse_args()
     try:
         library = Library()

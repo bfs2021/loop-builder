@@ -19,7 +19,9 @@ from loopgen.uploads import UploadError, prepare_upload
 
 
 def main():
-    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap = argparse.ArgumentParser(
+        prog="python -m loopgen", description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
     ap.add_argument("event", type=Path, nargs="?")
     ap.add_argument("--templates", type=Path, help="DisplayLink Plus template folder (overrides the event file)")
     ap.add_argument("--out", type=Path, help="folder for the exported files")
