@@ -39,12 +39,14 @@ def register(app, ctx):
     def home():
         settings = lib.settings()
         folder = template_folder_status(settings["templates"])  # the check Settings makes as a folder is typed
+        events, unreadable = lib.scan_events()
         return {
             "settings": {k: settings[k] for k in ("team", "templates", "export_dir", "pool_lanes", "first_lane")}
             | {"logo": bool(settings["logo"]), "theme": lib.team_look()},
             "templates_found": folder["found"],
             "template_count": folder["count"],
-            "events": lib.events(),
+            "events": events,
+            "unreadable": unreadable,  # left out of events: the home says so
             "starters": [{"id": k, "title": v["title"], "about": v["about"]} for k, v in STARTERS.items()],
             "open": current.session.path.parent.name if current.session else None,
             "folder": str(lib.root),

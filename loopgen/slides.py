@@ -387,12 +387,13 @@ class Renderer:
             if pic is None:
                 self.warn("this layout needs a picture: pick one under Picture")
             else:
-                ph = min(self.H - 20, top and bottom - top)
-                pw = min(round(pic.width * ph / pic.height), int(self.W * 0.45))
-                ph = round(pic.height * pw / pic.width)
-                pic = pic.resize((pw, ph), Image.Resampling.LANCZOS)
+                # kept MARGIN clear of the edge and the accent bars, as the lines are: closer, a badge seems to touch
+                room = min(self.H - 20, bottom - top - 2 * (MARGIN - 6))
+                fit = ImageOps.contain(pic, (int(self.W * 0.45), room), Image.Resampling.LANCZOS)  # within both
+                pw, ph = max(1, fit.width), max(1, fit.height)  # a 1000 x 1 strip stays at least a pixel high
+                pic = fit if fit.size == (pw, ph) else pic.resize((pw, ph), Image.Resampling.LANCZOS)
                 left = p.get("picture_side") == "left"
-                px = 6 if left else self.W - pw - 6
+                px = MARGIN if left else self.W - pw - MARGIN
                 img.paste(pic, (px, top + (bottom - top - ph) // 2), pic)
                 x0, x1 = (px + pw + 6, self.W) if left else (0, px - 6)
             pic = None

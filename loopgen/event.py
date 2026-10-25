@@ -111,7 +111,11 @@ def _slide(item, where):
 def read_event_file(path):
     """An event file's data, if it has the shape load_event reads: a mapping, its loops a list of mappings. A file
     that isn't (a YAML slip, a half-synced copy) raises EventError saying where, rather than a crash further on."""
-    return parse_event(Path(path).read_text(encoding="utf-8"), path)
+    try:
+        text = Path(path).read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError) as exc:  # can't be opened, or saved in another encoding
+        raise EventError(f"{path}: can't be read as an event file: {exc}") from exc
+    return parse_event(text, path)
 
 
 def parse_event(text, path):

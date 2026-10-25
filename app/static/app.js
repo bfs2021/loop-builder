@@ -852,6 +852,7 @@ function afterAdding(use) {
 
 $("#team-pick").addEventListener("click", () => $("#team-file").click()); // the app's own button for the file picker
 $("#team-file").addEventListener("change", (e) => { $("#team-file-name").textContent = e.target.files[0]?.name || "No logo chosen"; });
+$("#picture-pick").addEventListener("click", () => $("#picture-file").click()); // the same, for Pictures
 
 // The team library: logos kept for every event.
 async function manageTeams(after) {
@@ -1109,8 +1110,10 @@ function managePictures({ choose = false } = {}) {
   $("#picture-once").hidden = !choose;
   $("#pictures-close").textContent = choose ? "Cancel" : "Done";
   status.textContent = "";
+  $("#picture-file-name").textContent = $("#picture-file").files[0]?.name || "No picture chosen";
   $("#picture-file").onchange = () => { // a name from the file, until one is typed
     const f = $("#picture-file").files[0], name = $("#picture-name");
+    $("#picture-file-name").textContent = f?.name || "No picture chosen";
     if (f && !name.value.trim()) name.value = f.name.replace(/\.[^.]+$/, "").replace(/[-_]+/g, " ");
   };
   $("#picture-add").onclick = async () => {
@@ -1123,6 +1126,7 @@ function managePictures({ choose = false } = {}) {
     if (!res.ok) { status.textContent = await failure(res); return; }
     const data = await res.json();
     $("#picture-name").value = ""; $("#picture-file").value = ""; $("#picture-trim").checked = false;
+    $("#picture-file-name").textContent = "No picture chosen";
     if (choose) { done(await usePicture(data.id)); return; }
     status.textContent = `Added ${name}.`;
     render();

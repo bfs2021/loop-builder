@@ -103,7 +103,7 @@
     <ul id="pictures-grid" class="picture-grid"></ul>
     <fieldset class="group">
       <legend class="label">Add a picture</legend>
-      <div class="row"><input id="picture-name" class="field grow" placeholder="Name, e.g. Meet Mobile badge" aria-label="Picture name"><input id="picture-file" type="file" accept="image/png,image/jpeg,image/webp,image/gif" class="field" aria-label="Picture file"></div>
+      <div class="row"><input id="picture-name" class="field grow" placeholder="Name, e.g. Meet Mobile badge" aria-label="Picture name"><button class="btn" type="button" id="picture-pick">Choose a picture…</button><span id="picture-file-name" class="muted">No picture chosen</span><input id="picture-file" type="file" accept="image/png,image/jpeg,image/webp,image/gif" hidden></div>
       <label class="check-row"><input type="checkbox" id="picture-trim"> Remove a white background around it</label>
       <div class="row"><button class="btn btn-primary" type="button" id="picture-add">Add picture</button><span id="picture-status" class="muted" aria-live="polite"></span></div>
     </fieldset>
