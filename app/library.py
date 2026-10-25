@@ -504,11 +504,17 @@ class Library:  # pylint: disable=too-many-public-methods  # the one way in to t
         return path
 
     def events(self):
-        found = []
+        return self.scan_events()[0]
+
+    def scan_events(self):
+        """The events, newest first, and the folders whose event file can't be read: those are left out of the
+        list, and the home says so rather than looking as if they were deleted. One pass over the files."""
+        found, unreadable = [], []
         for path in self.events_dir.glob("*/event.yaml"):
             try:
                 data = read_event_file(path)
             except EventError:  # a hand-edited or half-synced file: left out, so the other events still show
+                unreadable.append(path.parent.name)
                 continue
             found.append(
                 {
@@ -522,18 +528,7 @@ class Library:  # pylint: disable=too-many-public-methods  # the one way in to t
                     ],
                 }
             )
-        return sorted(found, key=lambda e: e["edited"], reverse=True)
-
-    def unreadable_events(self):
-        """The folders whose event file events() leaves out, so the home can say so instead of looking as if they
-        were deleted."""
-        bad = []
-        for path in self.events_dir.glob("*/event.yaml"):
-            try:
-                read_event_file(path)
-            except EventError:
-                bad.append(path.parent.name)
-        return sorted(bad)
+        return sorted(found, key=lambda e: e["edited"], reverse=True), sorted(unreadable)
 
     def _free_name(self, name):
         """A name no event here has, and a free folder for it: "<name> (2)" when an event is called that or has that

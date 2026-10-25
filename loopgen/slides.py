@@ -388,10 +388,9 @@ class Renderer:
                 self.warn("this layout needs a picture: pick one under Picture")
             else:
                 # kept MARGIN clear of the edge and the accent bars, as the lines are: closer, a badge seems to touch
-                ph = min(self.H - 20, bottom - top - 2 * (MARGIN - 6))
-                pw = min(round(pic.width * ph / pic.height), int(self.W * 0.45))
-                ph = round(pic.height * pw / pic.width)
-                pic = pic.resize((pw, ph), Image.Resampling.LANCZOS)
+                room = min(self.H - 20, bottom - top - 2 * (MARGIN - 6))
+                pic = ImageOps.contain(pic, (int(self.W * 0.45), room), Image.Resampling.LANCZOS)  # within both
+                pw, ph = pic.size
                 left = p.get("picture_side") == "left"
                 px = MARGIN if left else self.W - pw - MARGIN
                 img.paste(pic, (px, top + (bottom - top - ph) // 2), pic)

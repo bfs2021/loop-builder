@@ -9,7 +9,7 @@ from PIL import Image
 
 from loopgen import export_loop, export_pngs, load_event, render_slide, run_checks
 from loopgen.loops import existing_exports
-from loopgen.slides import Renderer
+from loopgen.slides import BAR, MARGIN, Renderer
 from loopgen.uploads import prepare_upload, shrink
 
 EXAMPLE = Path(__file__).resolve().parent.parent / "examples" / "dual-meet" / "event.yaml"
@@ -397,3 +397,27 @@ def test_a_qr_slide_without_a_full_link_shows_where_its_code_will_go(tmp_path):
     assert [b.text for b in zxingcpp.read_barcodes(finished)] == ["https://example.org/heat-sheet"]
     errors = [i for i in run_checks(event) if i.level == "error"]
     assert [e.slide for e in errors] == [1]  # and the export still stops until the link is there
+
+
+@pytest.mark.parametrize("size", [(30, 240), (3, 100), (4, 176), (200, 60), (1000, 1)])
+@pytest.mark.parametrize("bars", ["both", "top", "bottom", "none"])
+def test_a_text_picture_card_keeps_its_picture_clear_of_the_bars(tmp_path, size, bars):
+    """Round 5: a badge seemed to touch the accent bar. Narrow pictures could still grow past their room."""
+    (tmp_path / "assets").mkdir()
+    Image.new("RGBA", size, (255, 220, 0, 255)).save(tmp_path / "assets" / "pic.png")
+    event_file = tmp_path / "event.yaml"
+    event_file.write_text(
+        "event: Clear\ntheme: {text: '#0000FF', muted: '#0000FF', primary: '#0000FF', background: '#000000'}\n"
+        "loops:\n  - name: P\n    slides:\n"
+        f"      - card: {{layout: text-picture, picture: assets/pic.png, bars: {bars}, lines: [{{text: TIGERS}}]}}\n",
+        encoding="utf-8",
+    )
+    event = load_event(event_file)
+    img = render_slide(event, event.loops[0], 0)
+    box = _yellow(img)
+    if size == (1000, 1):  # a 1-pixel strip blends into the black when shrunk: enough that it draws, not crashes
+        return
+    assert box is not None
+    top = BAR + MARGIN if bars in ("top", "both") else MARGIN
+    bottom = img.height - (BAR + MARGIN if bars in ("bottom", "both") else MARGIN)
+    assert box[1] >= top and box[3] <= bottom and box[0] >= MARGIN and box[2] <= img.width - MARGIN

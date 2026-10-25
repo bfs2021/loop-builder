@@ -205,17 +205,18 @@ def test_importing_a_renamed_events_package_tells_the_copy_apart(lib, tmp_path):
         "event: Bad\nloops: [1, 2]\n",
         "event: Bad\nloops: [\n",
         "event: Bad\nloops:\n  - name: a\n    slides: 3\n",
+        b"event: caf\xe9\nloops: []\n",  # saved as Latin-1, not UTF-8
     ],
 )
 def test_a_malformed_event_file_is_left_out_and_explained(lib, text):
     """A hand-edited or half-synced file used to take the whole events home down (500) with it."""
     lib.create("Good", "blank")
     (lib.events_dir / "Bad").mkdir()
-    (lib.events_dir / "Bad" / "event.yaml").write_text(text, encoding="utf-8")
+    (lib.events_dir / "Bad" / "event.yaml").write_bytes(text if isinstance(text, bytes) else text.encode("utf-8"))
     assert [e["name"] for e in lib.events()] == ["Good"]
-    assert lib.unreadable_events() == ["Bad"]  # so the home can say one is left out
+    assert lib.scan_events()[1] == ["Bad"]  # so the home can say one is left out
     api = TestClient(create_app(library=lib), base_url="http://127.0.0.1")  # the app answers only its own host
-    assert api.get("/api/home").status_code == 200
+    assert api.get("/api/home").json()["unreadable"] == ["Bad"]
     res = api.post("/api/events/Bad/open")
     assert res.status_code == 422 and "Bad" in res.json()["detail"]  # an EventError naming the file, not a 500
 
