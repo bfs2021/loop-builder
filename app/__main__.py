@@ -140,7 +140,9 @@ def ensure_streams():
 
 def main():
     ensure_streams()
-    ap = argparse.ArgumentParser(prog="python -m app", description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap = argparse.ArgumentParser(
+        prog="python -m app", description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
     ap.add_argument("event", nargs="?")
     ap.add_argument("--templates", help="DisplayLink Plus template folder (overrides the setting)")
     developer = ap.add_argument_group("developer options")
