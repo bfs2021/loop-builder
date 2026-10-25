@@ -21,7 +21,7 @@ const icon = (type) => {
   return svg;
 };
 
-const state = { event: null, loop: 0, n: 0, draft: null, templates: [], templateDetails: [], teams: [], settings: {}, issues: [], stamp: Date.now() };
+const state = { event: null, loop: 0, n: 0, draft: null, templates: [], templateDetails: [], teams: [], settings: {}, issues: [], teamsAdded: [], stamp: Date.now() };
 const kindOf = (raw) => Object.keys(raw)[0];
 const propsOf = (raw) => raw[kindOf(raw)];
 const currentLoop = () => state.event.loops[state.loop];
@@ -802,7 +802,8 @@ function lanesEditor(p) {
         e.target.value = match ? match.id : "";
         manageTeams(afterAdding(async (team) => {
           if (P().lanes[i] && P().lanes[i].name) return;
-          P().lanes[i] = await api(`/api/teams/${encodeURIComponent(team.id)}/use`, "POST");
+          try { P().lanes[i] = await api(`/api/teams/${encodeURIComponent(team.id)}/use`, "POST"); }
+          catch (err) { flash(err.message); return; }
           previewDraft(); renderEditor();
         }));
         return;
@@ -838,12 +839,14 @@ function lanesEditor(p) {
   ];
 }
 
-// Teams opened from a team list: when exactly one team was added there, `use` it where the list was.
+// After the Teams dialog closes: hand the team added there to `use` (the lane, card or visitor it was opened from).
+// With several added in one visit, the last one added and still there, a team added again (a new logo) included;
+// teams are listed by name, so the dialog notes the order.
 function afterAdding(use) {
-  const before = new Set(state.teams.map((t) => t.id));
+  state.teamsAdded = [];
   return () => {
-    const added = state.teams.filter((t) => !before.has(t.id));
-    if (added.length === 1) use(added[0]);
+    const last = [...state.teamsAdded].reverse().map((id) => state.teams.find((t) => t.id === id)).find(Boolean);
+    if (last) use(last);
   };
 }
 
@@ -876,9 +879,10 @@ async function manageTeams(after) {
     form.append("file", file); form.append("name", name); form.append("trim", $("#team-trim").checked ? "true" : "false");
     const res = await fetch("/api/teams", { method: "POST", body: form });
     if (!res.ok) { $("#team-status").textContent = await failure(res); return; }
+    state.teamsAdded.push((await res.json()).id); // in the order added, for afterAdding
     $("#team-name").value = ""; $("#team-file").value = ""; $("#team-file-name").textContent = "No logo chosen";
     $("#team-status").textContent = `Added ${name}.`;
-    render();
+    await render(); // so Done straight after hands over the team just added
   };
 }
 
