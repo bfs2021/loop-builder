@@ -2,13 +2,14 @@
 
 import os
 import sys
+import tempfile
 from pathlib import Path
 from types import SimpleNamespace as Screen
 
 import pytest
 import uvicorn
 
-from app.__main__ import WINDOW, ensure_streams, first_size, fit_to, spills, start_folder
+from app.__main__ import WINDOW, ensure_streams, first_size, fit_to, spills, start_folder, unreachable_page
 
 
 def test_a_windowed_start_logs_to_a_file_instead_of_failing(tmp_path, monkeypatch):
@@ -22,6 +23,24 @@ def test_a_windowed_start_logs_to_a_file_instead_of_failing(tmp_path, monkeypatc
     finally:
         sys.stdout.close()
     assert log == tmp_path / "Loop Builder" / "loop-builder.log" and "started" in log.read_text(encoding="utf-8")
+
+
+def test_a_folder_that_cant_be_reached_still_gets_a_log(tmp_path, monkeypatch):
+    """A school's Documents on a network share, off the network: the log goes to the temp folder, not a crash."""
+    (tmp_path / "share").write_text("not a folder")  # nothing can be made below a file
+    monkeypatch.setenv("LOOPBUILDER_HOME", str(tmp_path / "share" / "Loop Builder"))
+    monkeypatch.setattr(tempfile, "gettempdir", lambda: str(tmp_path / "temp"))  # not the real temp folder
+    (tmp_path / "temp").mkdir()
+    monkeypatch.setattr(sys, "stdout", None)
+    monkeypatch.setattr(sys, "stderr", None)
+    log = ensure_streams()
+    sys.stdout.close()
+    assert log == tmp_path / "temp" / "loop-builder.log"
+
+
+def test_the_unreachable_page_names_the_folder_safely():
+    page = unreachable_page(r"\\school\home\<pat>\Documents\Loop Builder", "[WinError 53] network path not found")
+    assert "&lt;pat&gt;" in page and "<pat>" not in page and "WinError 53" in page
 
 
 def test_a_console_start_keeps_its_streams():
