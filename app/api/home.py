@@ -38,8 +38,8 @@ def register(app, ctx):
     @app.get("/api/home")
     def home():
         settings = lib.settings()
-        folder = template_folder_status(settings["templates"])
-        events, unreadable = lib.scan_events()  # the check Settings makes as a folder is typed
+        folder = template_folder_status(settings["templates"])  # the check Settings makes as a folder is typed
+        events, unreadable = lib.scan_events()
         return {
             "settings": {k: settings[k] for k in ("team", "templates", "export_dir", "pool_lanes", "first_lane")}
             | {"logo": bool(settings["logo"]), "theme": lib.team_look()},

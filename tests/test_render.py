@@ -415,9 +415,7 @@ def test_a_text_picture_card_keeps_its_picture_clear_of_the_bars(tmp_path, size,
     event = load_event(event_file)
     img = render_slide(event, event.loops[0], 0)
     box = _yellow(img)
-    if size == (1000, 1):  # a 1-pixel strip blends into the black when shrunk: enough that it draws, not crashes
-        return
-    assert box is not None
+    assert box is not None  # drawn, even a 1000 x 1 strip (kept at least a pixel high)
     top = BAR + MARGIN if bars in ("top", "both") else MARGIN
     bottom = img.height - (BAR + MARGIN if bars in ("bottom", "both") else MARGIN)
     assert box[1] >= top and box[3] <= bottom and box[0] >= MARGIN and box[2] <= img.width - MARGIN
