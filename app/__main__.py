@@ -14,6 +14,7 @@ import sys
 import threading
 import time
 import webbrowser
+from pathlib import Path
 
 import uvicorn
 
@@ -25,6 +26,21 @@ def free_port():
     with socket.socket() as s:
         s.bind(("127.0.0.1", 0))
         return s.getsockname()[1]
+
+
+def start_folder(start, make=False):
+    """Where a dialog opens. A dialog given a folder that doesn't exist opens wherever the last one did, and the
+    exports folder (Movies › Loop Builder on a Mac) only exists after the first export: so with `make` the folder is
+    made first. Otherwise, or if it can't be made, the nearest folder above it that exists."""
+    if not start:
+        return ""
+    path = Path(start).expanduser()
+    if make:
+        try:
+            path.mkdir(parents=True, exist_ok=True)
+        except OSError:
+            pass
+    return str(next((p for p in (path, *path.parents) if p.is_dir()), ""))
 
 
 class NativeDialogs:
@@ -45,10 +61,10 @@ class NativeDialogs:
         return picked or None
 
     def pick_folder(self, start=""):
-        return self._dialog("FOLDER", directory=start or "")
+        return self._dialog("FOLDER", directory=start_folder(start))
 
     def save_file(self, name, start=""):
-        return self._dialog("SAVE", directory=start or "", save_filename=name)
+        return self._dialog("SAVE", directory=start_folder(start, make=True), save_filename=name)
 
     def show_folder(self, path):
         """Open a folder in Explorer or Finder: where an export just put its files."""
@@ -63,7 +79,9 @@ class NativeDialogs:
     def open_package(self, start=""):
         """A .loopevent to import. The page's own file input can't offer one on a Mac: the web view filters by
         file type, and macOS knows no type for .loopevent, so it greys those files out."""
-        return self._dialog("OPEN", directory=start or "", file_types=("Loop Builder event (*.loopevent)",))
+        return self._dialog(
+            "OPEN", directory=start_folder(start, make=True), file_types=("Loop Builder event (*.loopevent)",)
+        )
 
     def fit_screen(self, left, top, width, height):
         """Given the usable screen area the page measured, fit and centre the window if it spills over (once
