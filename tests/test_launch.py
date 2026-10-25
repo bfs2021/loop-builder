@@ -1,5 +1,6 @@
 """Starting without a console, as the packaged Windows app does, in a window that fits the screen."""
 
+import os
 import sys
 from pathlib import Path
 from types import SimpleNamespace as Screen
@@ -60,7 +61,8 @@ def test_dialogs_start_in_a_folder_that_exists(tmp_path):
     assert start_folder(str(tmp_path / "a file" / "below"), make=True) == str(tmp_path)  # can't be made: above it
     assert start_folder("") == start_folder("  ") == start_folder("Exports", make=True) == ""  # relative: none
     assert not (Path.cwd() / "Exports").exists()
-    assert start_folder("~nosuchuser12345/Exports") == ""  # no such home: the system's choice, not an error
+    nobody = start_folder("~nosuchuser12345/Exports")  # Mac: no such home ("" = the system's choice); Windows maps
+    assert nobody == "" or os.path.isdir(nobody)  # it under C:\\Users and climbs. Either way, no error
 
 
 @pytest.mark.skipif(sys.platform == "win32", reason="chmod can't lock a folder on Windows")
