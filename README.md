@@ -43,6 +43,11 @@ python3.13 -m venv .venv
 
 For working on the editor itself, `--browser` opens it in a browser tab instead, for reloading and dev tools.
 
+The example's Board slides and countdown backgrounds use DisplayLink Plus templates (for example
+`Welcome - Meet Mobile.tpl`), which ship with DisplayLink Plus and not with this repository. Pass
+`--templates` to the folder that holds them; without it those slides report `board template not found` and
+the export stops.
+
 ## Architecture
 
 - `loopgen/` renders slides and loops from an event file and encodes them with FFmpeg through PyAV.

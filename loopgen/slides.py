@@ -132,7 +132,15 @@ class Renderer:
         path = self.event.template(template)
         if path not in self._boards:
             if not path.exists():
-                raise MissingAsset(f"board template not found: {template}")
+                where = self.event.templates
+                hint = (
+                    f"looked in {where}"
+                    if where.is_dir()
+                    else f"no template folder at {where}"
+                )
+                raise MissingAsset(
+                    f"board template not found: {template} ({hint}; pass --templates)"
+                )
             reader = tpl.Reader(path.read_bytes())
             img, meta = tpl.Renderer(reader).render(reader.parse())
             self._live[path] = sorted(

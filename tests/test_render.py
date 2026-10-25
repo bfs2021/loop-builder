@@ -68,6 +68,14 @@ def test_missing_board_template_is_an_error(event, tmp_path):
     event.templates = tmp_path  # an empty template folder
     errors = [i for i in run_checks(event, [event.loop("Welcome loop")]) if i.level == "error"]
     assert any("template" in e.message for e in errors)
+    # The message says where it looked and how to point elsewhere (#55).
+    assert any(str(tmp_path) in e.message and "--templates" in e.message for e in errors)
+
+
+def test_missing_board_template_reports_a_folder_that_does_not_exist(event, tmp_path):
+    event.templates = tmp_path / "absent"
+    errors = [i for i in run_checks(event, [event.loop("Welcome loop")]) if i.level == "error"]
+    assert any("no template folder at" in e.message and "--templates" in e.message for e in errors)
 
 
 def test_pictures_shrink_to_2048_and_keep_transparency(tmp_path):
