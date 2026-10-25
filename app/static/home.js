@@ -26,6 +26,12 @@ async function load() {
       el("a", { href: home.update.url, target: "_blank", rel: "noopener" }, "Download it"));
   }
   $("#folder").textContent = `Events are saved on this computer in ${home.folder}.`;
+  const bad = home.unreadable || []; // left out of the list, so they don't look deleted
+  $("#unreadable").hidden = !bad.length;
+  const one = bad.length === 1, names = bad.map((b) => `“${b}”`).join(", ");
+  $("#unreadable").textContent = !bad.length ? "" : one
+    ? `One event couldn’t be read, so it isn’t listed: ${names}. Its folder is still in Events, to fix or remove.`
+    : `${bad.length} events couldn’t be read, so they aren’t listed: ${names}. Their folders are still in Events, to fix or remove.`;
   $("#show-folder").hidden = !(native() && native().show_folder); // the app window can open it
   $("#show-folder").textContent = /Mac/.test(navigator.platform) ? "Show in Finder" : "Show in Explorer";
   $("#documents-offer").hidden = !home.offer_documents;

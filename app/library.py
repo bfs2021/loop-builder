@@ -524,6 +524,17 @@ class Library:  # pylint: disable=too-many-public-methods  # the one way in to t
             )
         return sorted(found, key=lambda e: e["edited"], reverse=True)
 
+    def unreadable_events(self):
+        """The folders whose event file events() leaves out, so the home can say so instead of looking as if they
+        were deleted."""
+        bad = []
+        for path in self.events_dir.glob("*/event.yaml"):
+            try:
+                read_event_file(path)
+            except EventError:
+                bad.append(path.parent.name)
+        return sorted(bad)
+
     def _free_name(self, name):
         """A name no event here has, and a free folder for it: "<name> (2)" when an event is called that or has that
         folder. Both count: a renamed event keeps the folder of its first name."""

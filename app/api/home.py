@@ -45,6 +45,7 @@ def register(app, ctx):
             "templates_found": folder["found"],
             "template_count": folder["count"],
             "events": lib.events(),
+            "unreadable": lib.unreadable_events(),  # left out of events: the home says so
             "starters": [{"id": k, "title": v["title"], "about": v["about"]} for k, v in STARTERS.items()],
             "open": current.session.path.parent.name if current.session else None,
             "folder": str(lib.root),
