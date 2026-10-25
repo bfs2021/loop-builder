@@ -1,8 +1,10 @@
 """Starting without a console, as the packaged Windows app does, in a window that fits the screen."""
 
 import sys
+from pathlib import Path
 from types import SimpleNamespace as Screen
 
+import pytest
 import uvicorn
 
 from app.__main__ import WINDOW, ensure_streams, first_size, fit_to, spills, start_folder
@@ -47,12 +49,42 @@ def test_show_folder_opens_only_a_folder_that_exists(tmp_path, monkeypatch):
     assert not dialogs.show_folder(str(tmp_path / "missing")) and not dialogs.show_folder("") and len(opened) == 1
 
 
-def test_save_and_open_dialogs_start_in_a_folder_that_exists(tmp_path):
+def test_dialogs_start_in_a_folder_that_exists(tmp_path):
     """Round 5: a new user's exports folder doesn't exist until the first export, and a dialog given a missing
-    folder opens wherever the last one did. Save and Open make it first; the folder picker climbs to one that exists."""
+    folder opens wherever the last one did. Save makes it first; the others climb to a folder that exists."""
     exports = tmp_path / "Movies" / "Loop Builder"
-    assert start_folder(str(exports)) == str(tmp_path) and not exports.exists()  # folder picker: nothing made
+    assert start_folder(str(exports)) == str(tmp_path) and not exports.exists()  # nothing made
     assert start_folder(str(exports), make=True) == str(exports) and exports.is_dir()
     (tmp_path / "a file").write_text("x")
+    assert start_folder(str(tmp_path / "a file"), make=True) == str(tmp_path)  # a file: the folder it's in
     assert start_folder(str(tmp_path / "a file" / "below"), make=True) == str(tmp_path)  # can't be made: above it
-    assert start_folder("") == ""
+    assert start_folder("") == start_folder("  ") == start_folder("Exports", make=True) == ""  # relative: none
+    assert not (Path.cwd() / "Exports").exists()
+    assert start_folder("~nosuchuser12345/Exports") == ""  # no such home: the system's choice, not an error
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="chmod can't lock a folder on Windows")
+def test_a_folder_that_cant_be_read_doesnt_break_the_dialog(tmp_path):
+    locked = tmp_path / "locked"
+    locked.mkdir()
+    locked.chmod(0)
+    try:
+        # Path.is_dir() raises PermissionError for Exports inside it; the dialog still gets the nearest folder
+        assert start_folder(str(locked / "Exports"), make=True) == str(locked)
+    finally:
+        locked.chmod(0o755)
+
+
+def test_only_save_makes_the_folder(tmp_path, monkeypatch):
+    import app.__main__ as launcher  # pylint: disable=import-outside-toplevel
+
+    calls = []
+    monkeypatch.setattr(
+        launcher.NativeDialogs, "_dialog", lambda self, kind, **kw: calls.append((kind, kw["directory"]))
+    )
+    dialogs, folder = launcher.NativeDialogs(), tmp_path / "Exports"
+    dialogs.pick_folder(str(folder))
+    dialogs.open_package(str(folder))
+    assert not folder.exists() and calls == [("FOLDER", str(tmp_path)), ("OPEN", str(tmp_path))]
+    dialogs.save_file("Meet.loopevent", str(folder))
+    assert folder.is_dir() and calls[-1] == ("SAVE", str(folder))
