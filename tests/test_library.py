@@ -330,8 +330,18 @@ def test_windows_uses_the_documents_explorer_shows_unless_one_is_already_in_use(
     monkeypatch.setattr(library.sys, "platform", "win32")
     monkeypatch.setattr(library, "windows_documents", lambda: tmp_path / "OneDrive" / "Documents")
     assert library.default_root() == tmp_path / "OneDrive" / "Documents" / "Loop Builder"
-    (tmp_path / "Documents" / "Loop Builder").mkdir(parents=True)  # 0.1.7 or earlier already made one here
+    (tmp_path / "Documents" / "Loop Builder" / "Events").mkdir(parents=True)  # made empty, e.g. by an offline launch
+    assert library.default_root() == tmp_path / "OneDrive" / "Documents" / "Loop Builder"  # not enough to stay
+    Library(tmp_path / "Documents" / "Loop Builder").create("Sections", "blank")  # events from 0.1.7 or earlier
     assert library.default_root() == tmp_path / "Documents" / "Loop Builder"
+
+
+def test_the_documents_folder_id_is_the_one_windows_documents():
+    """FOLDERID_Documents, {FDD39AD0-238F-46AF-ADB4-6C85480369C7}: checked byte for byte, on any system."""
+    import uuid  # pylint: disable=import-outside-toplevel
+    from app import library  # pylint: disable=import-outside-toplevel
+
+    assert bytes(library.FOLDERID_DOCUMENTS) == uuid.UUID("FDD39AD0-238F-46AF-ADB4-6C85480369C7").bytes_le
 
 
 @pytest.mark.skipif(sys.platform != "win32", reason="asks Windows itself")

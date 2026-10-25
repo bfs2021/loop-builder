@@ -9,6 +9,7 @@ where macOS asks before an app may use Documents (0.1.6 and earlier kept it in D
 move_from). Set LOOPBUILDER_HOME to use another folder (tests do)."""
 
 import copy
+import ctypes
 import hashlib
 import json
 import os
@@ -154,35 +155,49 @@ class LibraryError(ValueError):
     """Something about the Loop Builder folder or an event package isn't right."""
 
 
+class _Guid(ctypes.Structure):  # pylint: disable=too-few-public-methods
+    """A Windows GUID as SHGetKnownFolderPath takes it (fixed sizes, so its bytes are the same on any system)."""
+
+    _fields_ = [("a", ctypes.c_uint32), ("b", ctypes.c_uint16), ("c", ctypes.c_uint16), ("d", ctypes.c_ubyte * 8)]
+
+
+FOLDERID_DOCUMENTS = _Guid(
+    0xFDD39AD0, 0x238F, 0x46AF, (ctypes.c_ubyte * 8)(0xAD, 0xB4, 0x6C, 0x85, 0x48, 0x03, 0x69, 0xC7)
+)
+KF_FLAG_DONT_VERIFY = 0x4000  # the folder's path even when it can't be reached right now (a share, off the network)
+
+
 def windows_documents():
     """The Documents folder Windows shows in Explorer, or None if Windows can't say. OneDrive's folder backup (on by
-    default on many school PCs) moves it to OneDrive › Documents, so it isn't always <user folder>\\Documents."""
+    default on many school PCs) moves it to OneDrive › Documents, and a school may redirect it to a network share,
+    so it isn't always <user folder>\\Documents. Asked without checking it can be reached, so the answer doesn't
+    change with whether the PC is on the school network today."""
     if sys.platform != "win32":
         return None
-    import ctypes  # pylint: disable=import-outside-toplevel  # Windows only
-    from ctypes import wintypes  # pylint: disable=import-outside-toplevel
-
-    class Guid(ctypes.Structure):  # pylint: disable=too-few-public-methods
-        """A Windows GUID, as SHGetKnownFolderPath takes it."""
-
-        _fields_ = [("a", wintypes.DWORD), ("b", wintypes.WORD), ("c", wintypes.WORD), ("d", ctypes.c_ubyte * 8)]
-
-    documents = Guid(0xFDD39AD0, 0x238F, 0x46AF, (ctypes.c_ubyte * 8)(0xAD, 0xB4, 0x6C, 0x85, 0x48, 0x03, 0x69, 0xC7))
+    shell32, ole32 = ctypes.windll.shell32, ctypes.windll.ole32
+    shell32.SHGetKnownFolderPath.argtypes = [
+        ctypes.POINTER(_Guid),
+        ctypes.c_uint32,
+        ctypes.c_void_p,
+        ctypes.POINTER(ctypes.c_wchar_p),
+    ]
+    shell32.SHGetKnownFolderPath.restype = ctypes.c_long  # an HRESULT: 0 is success
     path = ctypes.c_wchar_p()
-    if ctypes.windll.shell32.SHGetKnownFolderPath(ctypes.byref(documents), 0, None, ctypes.byref(path)) != 0:
+    if shell32.SHGetKnownFolderPath(ctypes.byref(FOLDERID_DOCUMENTS), KF_FLAG_DONT_VERIFY, None, ctypes.byref(path)):
         return None
     try:
         return Path(path.value)
     finally:
-        ctypes.windll.ole32.CoTaskMemFree(path)
+        ole32.CoTaskMemFree(path)
 
 
 def documents_root():
     """Documents › Loop Builder: the Loop Builder folder on Windows, and on a Mac up to 0.1.6. On Windows that's the
-    Documents Explorer shows (OneDrive › Documents when OneDrive backs it up), unless 0.1.7 or earlier already made
-    one in <user folder>\\Documents: that one stays, so no one's events go missing."""
+    Documents Explorer shows (OneDrive › Documents when OneDrive backs it up), unless events from 0.1.7 or earlier
+    are in a Loop Builder folder in <user folder>\\Documents: those stay in use, so no one's events go missing. Only
+    events count, not the folder alone, which a launch could have made empty."""
     in_home = Path.home() / "Documents" / "Loop Builder"
-    if sys.platform != "win32" or in_home.is_dir():
+    if sys.platform != "win32" or any(in_home.glob("Events/*/event.yaml")):
         return in_home
     shown = windows_documents()
     return shown / "Loop Builder" if shown else in_home

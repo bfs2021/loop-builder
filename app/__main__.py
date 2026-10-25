@@ -7,17 +7,20 @@ browser tab instead (reload and dev tools); --no-open only serves; --port picks 
 """
 
 import argparse
+import html
 import os
 import socket
 import subprocess
 import sys
+import tempfile
 import threading
 import time
 import webbrowser
+from pathlib import Path
 
 import uvicorn
 
-from app.library import default_root
+from app.library import Library, default_root
 from app.server import create_app
 
 
@@ -111,11 +114,27 @@ def ensure_streams():
     if sys.stdout is not None and sys.stderr is not None:
         return None
     log = default_root() / "loop-builder.log"
-    log.parent.mkdir(parents=True, exist_ok=True)
-    stream = open(log, "w", encoding="utf-8", buffering=1)  # pylint: disable=consider-using-with  # app-long
+    try:
+        log.parent.mkdir(parents=True, exist_ok=True)
+        stream = open(log, "w", encoding="utf-8", buffering=1)  # pylint: disable=consider-using-with  # app-long
+    except OSError:  # the folder can't be reached (a share, off the network): a log the app can still write
+        log = Path(tempfile.gettempdir()) / "loop-builder.log"
+        stream = open(log, "w", encoding="utf-8", buffering=1)  # pylint: disable=consider-using-with
     sys.stdout = sys.stdout or stream
     sys.stderr = sys.stderr or stream
     return log
+
+
+def unreachable_page(folder, problem):
+    """What the window says when the Loop Builder folder can't be reached, instead of opening on an empty or second
+    library (a school's Documents on a network share, with the PC off the network)."""
+    folder, problem = html.escape(str(folder)), html.escape(str(problem))
+    return (
+        "<!doctype html><meta charset=utf-8><body style='font:16px system-ui;padding:32px;max-width:40em'>"
+        f"<h2>Loop Builder can’t reach its folder</h2><p>Your events are kept in <b>{folder}</b>, which this computer "
+        "can’t open right now. If it’s on a school or work network, connect to it, then open Loop Builder again.</p>"
+        f"<p style='color:#666'>{problem}</p>"
+    )
 
 
 def main():
@@ -127,10 +146,23 @@ def main():
     ap.add_argument("--browser", action="store_true", help=argparse.SUPPRESS)
     ap.add_argument("--no-open", action="store_true", help=argparse.SUPPRESS)
     args = ap.parse_args()
+    try:
+        library = Library()
+    except OSError as exc:  # its folder can't be made or reached
+        print(f"error: the Loop Builder folder can't be reached: {exc}", file=sys.stderr)
+        if args.browser or args.no_open:
+            raise SystemExit(1) from exc
+        import webview  # pylint: disable=import-outside-toplevel
+
+        webview.create_window("Loop Builder", html=unreachable_page(default_root(), exc), width=640, height=360)
+        webview.start()
+        raise SystemExit(1) from exc
     port = args.port or free_port()
     url = f"http://127.0.0.1:{port}/" + ("edit" if args.event else "")
     server = uvicorn.Server(
-        uvicorn.Config(create_app(args.event, args.templates), host="127.0.0.1", port=port, log_level="warning")
+        uvicorn.Config(
+            create_app(args.event, args.templates, library=library), host="127.0.0.1", port=port, log_level="warning"
+        )
     )
     if args.browser or args.no_open:
         if args.browser:
