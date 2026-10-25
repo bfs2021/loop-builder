@@ -138,7 +138,11 @@ def ensure_streams():
         stream = open(log, "w", encoding="utf-8", buffering=1)  # pylint: disable=consider-using-with  # app-long
     except OSError:  # the folder can't be reached (a share, off the network): a log the app can still write
         log = Path(tempfile.gettempdir()) / "loop-builder.log"
-        stream = open(log, "w", encoding="utf-8", buffering=1)  # pylint: disable=consider-using-with
+        try:
+            stream = open(log, "w", encoding="utf-8", buffering=1)  # pylint: disable=consider-using-with
+        except OSError:  # nowhere to write: start anyway, without a log
+            stream = open(os.devnull, "w", encoding="utf-8")  # pylint: disable=consider-using-with
+            log = None
     sys.stdout = sys.stdout or stream
     sys.stderr = sys.stderr or stream
     return log

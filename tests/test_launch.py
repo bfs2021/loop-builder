@@ -29,11 +29,13 @@ def test_a_folder_that_cant_be_reached_still_gets_a_log(tmp_path, monkeypatch):
     """A school's Documents on a network share, off the network: the log goes to the temp folder, not a crash."""
     (tmp_path / "share").write_text("not a folder")  # nothing can be made below a file
     monkeypatch.setenv("LOOPBUILDER_HOME", str(tmp_path / "share" / "Loop Builder"))
+    monkeypatch.setattr(tempfile, "gettempdir", lambda: str(tmp_path / "temp"))  # not the real temp folder
+    (tmp_path / "temp").mkdir()
     monkeypatch.setattr(sys, "stdout", None)
     monkeypatch.setattr(sys, "stderr", None)
     log = ensure_streams()
     sys.stdout.close()
-    assert log.name == "loop-builder.log" and log.parent == Path(tempfile.gettempdir())
+    assert log == tmp_path / "temp" / "loop-builder.log"
 
 
 def test_the_unreachable_page_names_the_folder_safely():

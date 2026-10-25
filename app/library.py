@@ -191,13 +191,22 @@ def windows_documents():
         ole32.CoTaskMemFree(path)
 
 
+def _in_use(folder):
+    """Whether a Loop Builder folder holds anything someone made: an event, settings, or a team or logo file."""
+    return (
+        (folder / "settings.json").is_file()
+        or any(folder.glob("Events/*/event.yaml"))
+        or any(p.is_file() for p in folder.glob("Team/**/*"))
+    )
+
+
 def documents_root():
     """Documents › Loop Builder: the Loop Builder folder on Windows, and on a Mac up to 0.1.6. On Windows that's the
-    Documents Explorer shows (OneDrive › Documents when OneDrive backs it up), unless events from 0.1.7 or earlier
-    are in a Loop Builder folder in <user folder>\\Documents: those stay in use, so no one's events go missing. Only
-    events count, not the folder alone, which a launch could have made empty."""
+    Documents Explorer shows (OneDrive › Documents when OneDrive backs it up), unless a Loop Builder folder from
+    0.1.7 or earlier in <user folder>\\Documents is in use (events, settings or a team logo in it): that one stays,
+    so nothing someone set up goes missing. Empty folders alone don't count."""
     in_home = Path.home() / "Documents" / "Loop Builder"
-    if sys.platform != "win32" or any(in_home.glob("Events/*/event.yaml")):
+    if sys.platform != "win32" or _in_use(in_home):
         return in_home
     shown = windows_documents()
     return shown / "Loop Builder" if shown else in_home

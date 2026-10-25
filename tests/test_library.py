@@ -330,10 +330,15 @@ def test_windows_uses_the_documents_explorer_shows_unless_one_is_already_in_use(
     monkeypatch.setattr(library.sys, "platform", "win32")
     monkeypatch.setattr(library, "windows_documents", lambda: tmp_path / "OneDrive" / "Documents")
     assert library.default_root() == tmp_path / "OneDrive" / "Documents" / "Loop Builder"
-    (tmp_path / "Documents" / "Loop Builder" / "Events").mkdir(parents=True)  # made empty, e.g. by an offline launch
-    assert library.default_root() == tmp_path / "OneDrive" / "Documents" / "Loop Builder"  # not enough to stay
-    Library(tmp_path / "Documents" / "Loop Builder").create("Sections", "blank")  # events from 0.1.7 or earlier
-    assert library.default_root() == tmp_path / "Documents" / "Loop Builder"
+    old = tmp_path / "Documents" / "Loop Builder"
+    (old / "Events").mkdir(parents=True)
+    (old / "Team").mkdir()  # empty folders, as a launch makes them: not enough to stay
+    assert library.default_root() == tmp_path / "OneDrive" / "Documents" / "Loop Builder"
+    for made in ("settings.json", "Team/logo.png", "Events/Sections/event.yaml"):  # any of these: in use
+        (old / made).parent.mkdir(parents=True, exist_ok=True)
+        (old / made).write_text("x")
+        assert library.default_root() == old, made
+        (old / made).unlink()
 
 
 def test_the_documents_folder_id_is_the_one_windows_documents():
